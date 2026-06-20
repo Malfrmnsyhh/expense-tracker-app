@@ -58,16 +58,29 @@ function renderTransactions(dataToRender = transactions) {
 
   for (const transaction of dataToRender) {
     const card = document.createElement('div');
-    card.setAttribute('data-testid', 'transactionCard');
+    // Penyesuaian testid sesuai kriteria reviewer:
+    card.setAttribute('data-testid', 'transactionItem');
     
+    // Menambahkan class agar tampilannya lebih rapi sesuai desain
+    card.classList.add('tracker-transaction-item');
+
+    const typeText = transaction.type === 'income' ? 'Pemasukan' : 'Pengeluaran';
+
     card.innerHTML = `
-      <h4>${transaction.title}</h4>
-      <p>${transaction.amount}</p>
-      <p>${transaction.date}</p>
-      <div class="tracker-transaction-item__actions">
-        <button class="tracker-transaction-item__btn" onclick="editTransaction(${transaction.id})">Edit</button>
-        <button class="tracker-transaction-item__btn" onclick="deleteTransaction(${transaction.id})">Hapus</button>
-        <button class="tracker-transaction-item__btn" onclick="changeTransactionType(${transaction.id})">Ubah Tipe</button>
+      <div class="tracker-transaction-item__detail">
+        <h4 data-testid="transactionItemTitle" class="tracker-transaction-item__title">${transaction.title}</h4>
+        <p data-testid="transactionItemDate" class="tracker-transaction-item__date">${transaction.date}</p>
+        <p data-testid="transactionItemType" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px; text-transform: capitalize;">${transaction.type}</p>
+      </div>
+      <div class="tracker-transaction-item__right">
+        <p data-testid="transactionItemAmount" class="tracker-transaction-item__amount tracker-transaction-item__amount--${transaction.type}">
+          Rp ${transaction.amount}
+        </p>
+        <div class="tracker-transaction-item__actions">
+          <button class="tracker-transaction-item__btn" onclick="editTransaction(${transaction.id})">Edit</button>
+          <button data-testid="transactionItemDeleteButton" class="tracker-transaction-item__btn" onclick="deleteTransaction(${transaction.id})">Hapus</button>
+          <button data-testid="transactionItemEditTypeButton" class="tracker-transaction-item__btn" onclick="changeTransactionType(${transaction.id})">Ubah Tipe</button>
+        </div>
       </div>
     `;
 
@@ -82,22 +95,33 @@ function renderTransactions(dataToRender = transactions) {
 const STORAGE_KEY = 'tracker-app-data';
 const EVENT_UPDATE = 'transaction:updated';
 
+function isStorageExist() {
+  if (typeof (Storage) === undefined) {
+    alert('Browser tidak mendukung local storage');
+    return false;
+  }
+  return true;
+}
+
 const saveData = () => {
-  const parsed = JSON.stringify(transactions);
-  localStorage.setItem(STORAGE_KEY, parsed);
-  
-  document.dispatchEvent(new Event(EVENT_UPDATE));
+  if (isStorageExist()) {
+    const parsed = JSON.stringify(transactions);
+    localStorage.setItem(STORAGE_KEY, parsed);
+    document.dispatchEvent(new Event(EVENT_UPDATE));
+  }
 }
 
 const loadDataFromStorage = () => {
-  const serialDate = localStorage.getItem(STORAGE_KEY);
-  let data = JSON.parse(serialDate);
+  if (isStorageExist()) {
+    const serialData = localStorage.getItem(STORAGE_KEY);
+    let data = JSON.parse(serialData);
 
-  if (data !== null) {
-    transactions = data;
+    if (data !== null) {
+      transactions = data;
+    }
+
+    document.dispatchEvent(new Event(EVENT_UPDATE));
   }
-
-  document.dispatchEvent(new Event(EVENT_UPDATE));
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -141,9 +165,11 @@ const changeTransactionType = (id) => {
 }
 
 const searchInput = document.getElementById('searchTransactionFormTitleInput');
+const searchForm = document.getElementById('searchTransactionForm');
 
-searchInput.addEventListener('input', function (e) {
-  const keyword = e.target.value.toLowerCase();
+searchForm.addEventListener('submit', function(e) {
+  e.preventDefault();
+  const keyword = searchInput.value.toLowerCase().trim();
   
   const filteredData = transactions.filter(t => 
     t.title.toLowerCase().includes(keyword)
@@ -152,8 +178,14 @@ searchInput.addEventListener('input', function (e) {
   renderTransactions(filteredData);
 });
 
-document.getElementById('searchTransactionForm').addEventListener('submit', function(e) {
-  e.preventDefault();
+searchInput.addEventListener('input', function (e) {
+  const keyword = e.target.value.toLowerCase().trim();
+  
+  const filteredData = transactions.filter(t => 
+    t.title.toLowerCase().includes(keyword)
+  );
+  
+  renderTransactions(filteredData);
 });
 
 const themeToggleBtn = document.getElementById('themeToggleBtn');
